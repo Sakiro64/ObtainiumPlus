@@ -322,7 +322,7 @@ class _ObtainiumState extends State<Obtainium> {
                       obtainiumId,
                       obtainiumUrl,
                       'ImranR98',
-                      'Obtainium',
+                      'Obtainium+',
                       value!.versionName,
                       value.versionName!,
                       [],
@@ -384,30 +384,64 @@ class _ObtainiumState extends State<Obtainium> {
 
           if (settingsProvider.useSystemFont) NativeFeatures.loadSystemFont();
 
+          final String fontFamily =
+              settingsProvider.useSystemFont ? 'SystemFont' : 'Montserrat';
+
+          ThemeData buildTheme(ColorScheme scheme) => ThemeData(
+            useMaterial3: true,
+            colorScheme: scheme,
+            fontFamily: fontFamily,
+            cardTheme: CardTheme(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              color: scheme.surfaceContainerLow,
+            ),
+            listTileTheme: ListTileThemeData(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 4,
+              ),
+            ),
+            chipTheme: ChipThemeData(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            filledButtonTheme: FilledButtonThemeData(
+              style: FilledButton.styleFrom(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+            floatingActionButtonTheme: FloatingActionButtonThemeData(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+          );
+
           return MaterialApp(
-            title: 'Obtainium',
+            title: 'Obtainium+',
             localizationsDelegates: context.localizationDelegates,
             supportedLocales: context.supportedLocales,
             locale: context.locale,
             navigatorKey: globalNavigatorKey,
             debugShowCheckedModeBanner: false,
-            theme: ThemeData(
-              useMaterial3: true,
-              colorScheme: settingsProvider.theme == ThemeSettings.dark
+            theme: buildTheme(
+              settingsProvider.theme == ThemeSettings.dark
                   ? darkColorScheme
                   : lightColorScheme,
-              fontFamily: settingsProvider.useSystemFont
-                  ? 'SystemFont'
-                  : 'Montserrat',
             ),
-            darkTheme: ThemeData(
-              useMaterial3: true,
-              colorScheme: settingsProvider.theme == ThemeSettings.light
+            darkTheme: buildTheme(
+              settingsProvider.theme == ThemeSettings.light
                   ? lightColorScheme
                   : darkColorScheme,
-              fontFamily: settingsProvider.useSystemFont
-                  ? 'SystemFont'
-                  : 'Montserrat',
             ),
             home: Shortcuts(
               shortcuts: <LogicalKeySet, Intent>{

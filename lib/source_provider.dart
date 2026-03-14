@@ -1,6 +1,7 @@
 // Defines App sources and provides functions used to interact with them
 // AppSource is an abstract class with a concrete implementation for each source
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
@@ -538,13 +539,23 @@ String getSourceRegex(List<String> hosts) {
   return '(${hosts.join('|').replaceAll('.', '\\.')})';
 }
 
-HttpClient createHttpClient(bool insecure) {
+HttpClient createHttpClient(bool insecure,
+    {Duration timeout = const Duration(seconds: 30)}) {
   final client = HttpClient();
+  client.connectionTimeout = timeout;
   if (insecure) {
     client.badCertificateCallback =
         (X509Certificate cert, String host, int port) => true;
   }
   return client;
+}
+
+bool _isTransientError(Object e) {
+  return e is SocketException ||
+      e is HttpException ||
+      e is TimeoutException ||
+      e is HandshakeException ||
+      (e is ObtainiumError && e.toString().contains('redirect'));
 }
 
 Future<MapEntry<Uri, MapEntry<HttpClient, HttpClientResponse>>>
@@ -688,6 +699,7 @@ abstract class AppSource {
     Map<String, dynamic> additionalSettings, {
     bool followRedirects = true,
     Object? postBody,
+    int retries = 3,
   }) async {
     var sp = SettingsProvider();
     await sp.initializeSettings();
@@ -705,21 +717,34 @@ abstract class AppSource {
       additionalSettingsPlusSourceConfig,
       url,
     );
-    var streamedResponseUrlWithResponseAndClient =
-        await sourceRequestStreamResponse(
+
+    for (int attempt = 0; attempt <= retries; attempt++) {
+      try {
+        var streamedResponseUrlWithResponseAndClient =
+            await sourceRequestStreamResponse(
+              method,
+              url,
+              requestHeaders,
+              additionalSettingsPlusSourceConfig,
+              followRedirects: followRedirects,
+              postBody: postBody,
+            );
+        return await httpClientResponseStreamToFinalResponse(
+          streamedResponseUrlWithResponseAndClient.value.key,
           method,
-          url,
-          requestHeaders,
-          additionalSettingsPlusSourceConfig,
-          followRedirects: followRedirects,
-          postBody: postBody,
+          streamedResponseUrlWithResponseAndClient.key.toString(),
+          streamedResponseUrlWithResponseAndClient.value.value,
         );
-    return await httpClientResponseStreamToFinalResponse(
-      streamedResponseUrlWithResponseAndClient.value.key,
-      method,
-      streamedResponseUrlWithResponseAndClient.key.toString(),
-      streamedResponseUrlWithResponseAndClient.value.value,
-    );
+      } catch (e) {
+        if (attempt < retries && _isTransientError(e)) {
+          final backoff = Duration(seconds: (2 << attempt)); // 2, 4, 8 seconds
+          await Future.delayed(backoff);
+          continue;
+        }
+        rethrow;
+      }
+    }
+    throw ObtainiumError('Request failed after $retries retries');
   }
 
   void runOnAddAppInputChange(String inputUrl) {

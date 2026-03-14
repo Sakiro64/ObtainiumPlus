@@ -181,7 +181,7 @@ Future<File> downloadFileWithRetry(
   String destDir, {
   bool useExisting = true,
   Map<String, String>? headers,
-  int retries = 3,
+  int retries = 5,
   bool allowInsecure = false,
   LogsProvider? logs,
 }) async {
@@ -198,8 +198,21 @@ Future<File> downloadFileWithRetry(
       logs: logs,
     );
   } catch (e) {
-    if (retries > 0 && e is ClientException) {
-      await Future.delayed(const Duration(seconds: 5));
+    final isRetryable = e is ClientException ||
+        e is SocketException ||
+        e is HttpException ||
+        e is TimeoutException ||
+        e is HandshakeException ||
+        (e is ObtainiumError &&
+            (e.toString().toLowerCase().contains('timeout') ||
+                e.toString().toLowerCase().contains('reset') ||
+                e.toString().toLowerCase().contains('connection')));
+    if (retries > 0 && isRetryable) {
+      final backoff = Duration(seconds: (retries <= 3 ? 5 : 3));
+      logs?.add(
+        'Download failed (${e.runtimeType}), retrying in ${backoff.inSeconds}s ($retries retries left): $fileName',
+      );
+      await Future.delayed(backoff);
       return await downloadFileWithRetry(
         url,
         fileName,
