@@ -13,14 +13,14 @@ jobs:
 
     steps:
       
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
-      - uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin' # See 'Supported distributions' for available options
-          java-version: '21'
 
       - name: Flutter Doctor
         id: flutter_doctor
@@ -46,10 +46,16 @@ jobs:
         run: |
           sed -i 's/signingConfig = signingConfigs.getByName("release")//g' android/app/build.gradle.kts
           flutter build apk --flavor normal && flutter build apk --split-per-abi --flavor normal
-          for file in build/app/outputs/flutter-apk/app-*normal*.apk*; do mv "$file" "${file//-normal/}"; done
+          echo "--- APK output after normal build ---"
+          find build/app/outputs -name "*.apk" 2>/dev/null || echo "No APKs found yet"
+          for file in build/app/outputs/flutter-apk/app-*normal*.apk; do
+            [ -e "$file" ] && mv "$file" "${file//-normal/}" || true
+          done
           flutter build apk --flavor fdroid -t lib/main_fdroid.dart && flutter build apk --split-per-abi --flavor fdroid -t lib/main_fdroid.dart
-          rm ./build/app/outputs/flutter-apk/*.sha1
-          cp ./sign.sh ./build/app/outputs/flutter-apk/
+          echo "--- APK output after fdroid build ---"
+          find build/app/outputs -name "*.apk" 2>/dev/null
+          find build/app/outputs/flutter-apk -name "*.sha1" -delete 2>/dev/null || true
+          cp ./sign.sh ./build/app/outputs/flutter-apk/ 2>/dev/null || true
           ls -l ./build/app/outputs/flutter-apk/
 
       - name: Save Unsigned APKs as Action Artifacts
