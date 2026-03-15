@@ -391,7 +391,7 @@ class _ObtainiumState extends State<Obtainium> {
             useMaterial3: true,
             colorScheme: scheme,
             fontFamily: fontFamily,
-            cardTheme: CardTheme(
+            cardTheme: CardThemeData(
               elevation: 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
