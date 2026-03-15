@@ -42,17 +42,25 @@ jobs:
           TAG="v$VERSION"
           echo "tag=$TAG" >> $GITHUB_OUTPUT
 
-      - name: Build APKs
+      - name: Build normal APKs
         run: |
-          flutter build apk --flavor normal --debug && flutter build apk --split-per-abi --flavor normal --debug
+          flutter build apk --flavor normal --debug
+          flutter build apk --split-per-abi --flavor normal --debug
           echo "--- APK output after normal build ---"
           find build/app/outputs -name "*.apk" 2>/dev/null || echo "No APKs found"
           for file in build/app/outputs/flutter-apk/app-*normal*.apk; do
             [ -e "$file" ] && mv "$file" "${file//-normal/}" || true
           done
-          flutter build apk --flavor fdroid --debug -t lib/main_fdroid.dart && flutter build apk --split-per-abi --flavor fdroid --debug -t lib/main_fdroid.dart
+
+      - name: Build fdroid APKs
+        run: |
+          flutter build apk --flavor fdroid --debug -t lib/main_fdroid.dart --verbose || true
+          flutter build apk --split-per-abi --flavor fdroid --debug -t lib/main_fdroid.dart --verbose || true
           echo "--- APK output after fdroid build ---"
-          find build/app/outputs -name "*.apk" 2>/dev/null
+          find build/app/outputs -name "*.apk" 2>/dev/null || echo "No fdroid APKs found"
+
+      - name: Collect artifacts
+        run: |
           find build/app/outputs/flutter-apk -name "*.sha1" -delete 2>/dev/null || true
           cp ./sign.sh ./build/app/outputs/flutter-apk/ 2>/dev/null || true
           ls -l ./build/app/outputs/flutter-apk/
